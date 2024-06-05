@@ -1,0 +1,10 @@
+{
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.extraPaths": [
+    "./src",
+    "./tests"
+  ],
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": "file://./.github/workflows/deploy.yml"
+  }
+}
