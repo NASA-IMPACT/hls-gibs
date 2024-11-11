@@ -73,6 +73,7 @@ jobs:
         run: ""  # Nothing to do, but at least one step is required
 
   unit-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     needs: config
     steps:
@@ -92,6 +93,7 @@ jobs:
           make unit-tests
 
   integration-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     environment: dev
     needs: config
