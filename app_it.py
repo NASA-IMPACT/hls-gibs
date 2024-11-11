@@ -2,37 +2,26 @@
 import os
 
 from aws_cdk import App, Tags
-from aws_cdk import aws_ssm as ssm
 
-from stacks import ForwardNotificationITStack, ForwardNotificationStack
+from hls_gibs.stack import NotificationStack
+from hls_gibs.stack_it import NotificationITStack
 
-managed_policy_name = os.getenv("HLS_LPDAAC_MANAGED_POLICY_NAME")
+managed_policy_name = os.getenv("HLS_LPDAAC_MANAGED_POLICY_NAME", "mcp-tenantOperator")
 
 app = App()
 
-it_stack = ForwardNotificationITStack(
+it_stack = NotificationITStack(
     app,
-    "hls-forward-it-resources",
-    managed_policy_name=managed_policy_name,
-)
-stack_under_test = ForwardNotificationStack(
-    app,
-    "hls-forward-under-test",
-    bucket_name=it_stack.bucket.bucket_name,
-    lpdaac_queue_arn=it_stack.forward_queue.queue_arn,
-    tiler_queue_arn=it_stack.tiler_queue.queue_arn,
+    "MockGibsResources",
     managed_policy_name=managed_policy_name,
 )
 
-# Set SSM Parameter for use within integration tests.  Others are set directly
-# within the it_stack itself.  This one is set on stack_under_test rather than
-# it_stack so we don't have a cyclic dependency.
-
-ssm.StringParameter(
-    stack_under_test,
-    "forward-function-name",
-    string_value=stack_under_test.notification_function.function_name,
-    parameter_name=("/hls/tests/forward-function-name"),
+NotificationStack(
+    app,
+    "TestGibs",
+    hls_bucket_name=it_stack.bucket.bucket_name,
+    gibs_queue_arn=it_stack.queue.queue_arn,
+    managed_policy_name=managed_policy_name,
 )
 
 for k, v in dict(

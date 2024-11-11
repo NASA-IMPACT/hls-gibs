@@ -65,4 +65,4 @@ jobs:
           )
       - name: Deploy forward notification to ${{ inputs.environment }}
         run: |
-          make deploy-forward
+          make deploy
