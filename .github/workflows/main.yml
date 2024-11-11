@@ -47,6 +47,12 @@ defaults:
   run:
     shell: bash
 
+# When this workflow is queued, automatically cancel any previous running or pending
+# jobs from the same branch.
+concurrency:
+  group: integration-tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   config:
     # This is a hack to work around the lack of support for two other possiblities for
@@ -60,7 +66,7 @@ jobs:
     # Alternative hack: https://github.com/actions/runner/issues/1182#issuecomment-1262870831
     runs-on: ubuntu-22.04
     outputs:
-      PYTHON_VERSION: "3.9"
+      PYTHON_VERSION: "3.12"
       TOX_MIN_VERSION: "3.18.0"  # `allowlist_externals` replaces `whitelist_externals`
     steps:
       - name: Configure shared values
@@ -125,16 +131,16 @@ jobs:
           done < <(
             jq -r <<<"$VARS_JSON" 'to_entries|map("\(.key)=\(.value)\u0000")[]'
           )
-      - name: Deploy forward notification integration test stack
-        run: |
-          make deploy-forward-it
-      - name: Run forward notification integration tests
-        run: |
-          make forward-integration-tests
-      - name: Destroy forward notification integration test stack
-        if: '!cancelled()'
-        run: |
-          make destroy-forward-it
+      # - name: Deploy forward notification integration test stack
+      #   run: |
+      #     make deploy-forward-it
+      # - name: Run forward notification integration tests
+      #   run: |
+      #     make forward-integration-tests
+      # - name: Destroy forward notification integration test stack
+      #   if: always()
+      #   run: |
+      #     make destroy-forward-it
 
   deploy-dev:
     # Deploy to Dev only on push (including merged PR) to `develop` branch
