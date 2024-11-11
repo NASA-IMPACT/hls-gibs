@@ -73,6 +73,7 @@ jobs:
         run: ""  # Nothing to do, but at least one step is required
 
   unit-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     needs: config
     steps:
@@ -92,8 +93,9 @@ jobs:
           make unit-tests
 
   integration-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
-    environment: dev-forward
+    environment: dev
     needs: config
     steps:
       - name: Checkout source
@@ -131,16 +133,16 @@ jobs:
           done < <(
             jq -r <<<"$VARS_JSON" 'to_entries|map("\(.key)=\(.value)\u0000")[]'
           )
-      # - name: Deploy forward notification integration test stack
-      #   run: |
-      #     make deploy-forward-it
-      # - name: Run forward notification integration tests
-      #   run: |
-      #     make forward-integration-tests
-      # - name: Destroy forward notification integration test stack
-      #   if: always()
-      #   run: |
-      #     make destroy-forward-it
+      - name: Deploy notification integration test stack
+        run: |
+          make deploy-it
+      - name: Run notification integration tests
+        run: |
+          make integration-tests
+      - name: Destroy notification integration test stack
+        if: always()
+        run: |
+          make destroy-it
 
   deploy-dev:
     # Deploy to Dev only on push (including merged PR) to `develop` branch
@@ -151,7 +153,7 @@ jobs:
       - integration-tests
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: dev-forward
+      environment: dev
       PYTHON_VERSION: "${{ needs.config.outputs.PYTHON_VERSION }}"
       TOX_MIN_VERSION: "${{ needs.config.outputs.TOX_MIN_VERSION }}"
     secrets: inherit
@@ -165,7 +167,7 @@ jobs:
       - integration-tests
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: prod-forward
+      environment: prod
       PYTHON_VERSION: "${{ needs.config.outputs.PYTHON_VERSION }}"
       TOX_MIN_VERSION: "${{ needs.config.outputs.TOX_MIN_VERSION }}"
     secrets: inherit
