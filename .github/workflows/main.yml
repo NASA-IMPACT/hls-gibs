@@ -1,7 +1,7 @@
 # Install Python dependencies, run tests, and lint with a single version of Python.
 # See https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: HLS LPDAAC Notifications
+name: HLS GIBS Notifications
 
 on:
   workflow_dispatch:
@@ -16,9 +16,8 @@ on:
       - '*'
     paths:
       - '.github/workflows/*'
-      - 'cdk/**'
-      - 'src/**'
       - 'cdk.json'
+      - 'hls_gibs/**'
       - 'Makefile'
       - 'setup.py'
       - 'tox.ini'
@@ -33,9 +32,8 @@ on:
       - develop
     paths:
       - '.github/workflows/*'
-      - 'cdk/**'
-      - 'src/**'
       - 'cdk.json'
+      - 'hls_gibs/**'
       - 'Makefile'
       - 'setup.py'
       - 'tox.ini'

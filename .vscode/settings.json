@@ -1,7 +1,7 @@
 {
   "python.analysis.typeCheckingMode": "basic",
   "python.analysis.extraPaths": [
-    "./src",
+    "./hls_gibs",
     "./tests"
   ],
   "yaml.schemas": {

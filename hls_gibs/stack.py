@@ -45,9 +45,9 @@ class NotificationStack(Stack):
         self.notification_function = lambda_.Function(
             self,
             "ForwardNotifier",
-            code=lambda_.Code.from_asset("src/hls_lpdaac/forward"),
+            code=lambda_.Code.from_asset("hls_gibs/forward"),
             handler="index.handler",
-            runtime=lambda_.Runtime.PYTHON_3_9,  # type: ignore
+            runtime=lambda_.Runtime.PYTHON_3_12,
             memory_size=128,
             timeout=Duration.seconds(30),
             environment=dict(
@@ -62,6 +62,6 @@ class NotificationStack(Stack):
         self.tiler_queue.grant_send_messages(self.notification_function)
         self.bucket.grant_read(self.notification_function)
         self.bucket.add_object_created_notification(
-            s3n.LambdaDestination(self.notification_function),  # type: ignore
+            s3n.LambdaDestination(self.notification_function),  # pyright: ignore
             s3.NotificationKeyFilter(suffix=".v2.0.json"),
         )

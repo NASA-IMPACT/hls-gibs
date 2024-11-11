@@ -1,20 +1,20 @@
+import json
 import os
-from typing import TYPE_CHECKING, Iterator
+from typing import Any, Iterator
 
 import boto3
 import pytest
-from moto import mock_s3, mock_sqs
+from moto import mock_aws
 
-if TYPE_CHECKING:
-    from aws_lambda_typing.events import S3Event
-    from mypy_boto3_s3 import S3ServiceResource
-    from mypy_boto3_s3.service_resource import Bucket, Object
-    from mypy_boto3_sqs import SQSServiceResource
-    from mypy_boto3_sqs.service_resource import Queue
+from aws_lambda_typing.events import S3Event
+from mypy_boto3_s3 import S3ServiceResource
+from mypy_boto3_s3.service_resource import Bucket, Object
+from mypy_boto3_sqs import SQSServiceResource
+from mypy_boto3_sqs.service_resource import Queue
 
 
-@pytest.fixture(scope="function")
-def aws_credentials():
+@pytest.fixture
+def aws_credentials() -> None:
     """Mocked AWS Credentials for moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -23,27 +23,43 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
-@pytest.fixture(scope="function")
-def s3(aws_credentials) -> Iterator["S3ServiceResource"]:
-    with mock_s3():
+@pytest.fixture
+def s3(aws_credentials: Any) -> Iterator[S3ServiceResource]:
+    with mock_aws():
         yield boto3.resource("s3")
 
 
-@pytest.fixture(scope="function")
-def s3_bucket(s3: "S3ServiceResource") -> "Bucket":
+@pytest.fixture
+def s3_bucket(s3: S3ServiceResource) -> Bucket:
     bucket = s3.Bucket("mybucket")
     bucket.create()
 
     return bucket
 
 
-@pytest.fixture(scope="function")
-def s3_object(s3_bucket: "Bucket") -> "Object":
-    return s3_bucket.put_object(Key="myobject.v2.json", Body=bytes("test", "utf-8"))
+@pytest.fixture(params=("L30", "S30"))
+def s3_object(request: pytest.FixtureRequest, s3_bucket: Bucket) -> Object:
+    return make_s3_object(request.param, s3_bucket)
 
 
-@pytest.fixture(scope="function")
-def s3_event(s3_object: "Object") -> "S3Event":
+@pytest.fixture
+def s3_object_event(s3_object: Object) -> tuple[Object, S3Event]:
+    return s3_object, make_s3_event(s3_object)
+
+
+@pytest.fixture
+def s3_object_event_bad_prefix(s3_bucket: Bucket) -> S3Event:
+    return make_s3_event(make_s3_object("bad_key", s3_bucket))
+
+
+def make_s3_object(key_prefix: str, bucket: Bucket) -> Object:
+    return bucket.put_object(
+        Key=f"{key_prefix}/path/to/dummy.json",
+        Body=json.dumps(dict(key_prefix=key_prefix)),
+    )
+
+
+def make_s3_event(s3_object: Object) -> S3Event:
     return {
         "Records": [
             {
@@ -70,12 +86,12 @@ def s3_event(s3_object: "Object") -> "S3Event":
     }
 
 
-@pytest.fixture(scope="function")
-def sqs(aws_credentials) -> Iterator["SQSServiceResource"]:
-    with mock_sqs():
+@pytest.fixture
+def sqs(aws_credentials: Any) -> Iterator[SQSServiceResource]:
+    with mock_aws():
         yield boto3.resource("sqs")
 
 
-@pytest.fixture(scope="function")
-def sqs_queue(sqs: "SQSServiceResource") -> "Queue":
-    return sqs.create_queue(QueueName="myqueue")
+@pytest.fixture
+def sqs_queue(sqs: SQSServiceResource) -> Queue:
+    return sqs.create_queue(QueueName="myqueue.fifo", Attributes={"FifoQueue": "true"})

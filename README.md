@@ -1,88 +1,69 @@
-# HLS LPDAAC
+# HLS GIBS
+
+Notify GIBS when HLS browse imagery is available.
+
+When a JSON file lands in an HLS browse imagery bucket (configurable), send a
+message to a GIBS queue (configurable).
 
 ## Requirements
 
 - [pre-commit](https://pre-commit.com/)
-- Python >= 3.9
+- Python >= 3.12
 - tox
-- AWS CLI
-- AWS IAM role with sufficient permissions for creating, destroying and modifying
-  relevant stack resources
 
 ## Environment Settings
 
+In order to _locally_ run integration tests, you must export the following
+environment variables:
+
 ```plain
-# AWS Short-term Access Key
+# A unique prefix for a deployment to avoid resource name conflicts between
+# deployments in the same AWS account.  Should be developer-specific, such as
+# a username or nickname.
+export HLS_GIBS_STACK=<stack name>
 
 export AWS_DEFAULT_REGION=us-west-2
 export AWS_ACCESS_KEY_ID=<id>
 export AWS_SECRET_ACCESS_KEY=<key>
 export AWS_SESSION_TOKEN=<token>
-
-# Stack variables
-
-export HLS_LPDAAC_STACK=<stack name>
-export HLS_LPDAAC_BUCKET_NAME=<source bucket name>
-export HLS_LPDAAC_QUEUE_ARN=<destination queue ARN>
-# Required ONLY in PROD for FORWARD processing (otherwise, a dummy queue is created)
-export HLS_LPDAAC_TILER_QUEUE_ARN=<tiler queue ARN>
-export HLS_LPDAAC_MANAGED_POLICY_NAME=mcp-tenantOperator
 ```
 
-## CDK Commands
-
-In the `make` commands shown below, `<APP>` must be one of the following:
-
-- `forward`
-- `forward-it` (integration test stack)
-- `historical`
-- `historical-it` (integration test stack)
-
-### Synth
-
-Display generated cloud formation template that will be used to deploy.
+For _GitHub workflows_, you must define the following environment variables in
+each GitHub environment for this repository:
 
 ```plain
-make synth-<APP>
+# A unique prefix for a deployment to avoid resource name conflicts between
+# deployments in the same AWS account.  Should correspond to GitHub environment
+# name.
+HLS_GIBS_STACK=<stack name>
+
+# Bucket to trigger lambda when .json file lands
+HLS_GIBS_BUCKET_NAME=<source bucket name>
+# Queue to send notification from Lambda triggered by new .json file in bucket
+HLS_GIBS_QUEUE_ARN=<destination queue ARN>
 ```
 
-### Diff
+For integration tests, a sidecar stack with dummy resources is constructed, and
+the environment variables referencing the resources are automatically obtained,
+so there is no need to manually set environment variables referring to the
+resources.
 
-Display a diff of the current deployment and any changes created.
+## Development
+
+For active stack development run the following to create a virtual environment
+in the `venv` directory:
 
 ```plain
-make diff-<APP>
+make venv
 ```
 
-### Deploy
+Whenever `setup.py` changes, rerun the command above to update the dependencies
+in the `venv` directory.
 
-Deploy current version of stack:
-
-```plain
-make deploy-<APP>
-```
-
-### Destroy
-
-Destroy current version of stack:
-
-```plain
-make destroy-<APP>
-```
-
-### Development
-
-For active stack development run
-
-```plain
-tox -e dev -r -- version
-```
-
-This creates a local virtualenv in the directory `.venv`.
 To use it for development:
 
 ```plain
-source .venv/bin/activate
+source venv/bin/activate
 ```
 
 Install pre-commit hooks:
@@ -100,7 +81,7 @@ To manually run the hooks to check code changes:
 pre-commit run --all-files
 ```
 
-### Tests
+## Testing
 
 To run unit tests:
 
@@ -108,18 +89,10 @@ To run unit tests:
 make unit-tests
 ```
 
-To run integration tests for forward processing:
+To run integration tests:
 
 ```plain
-make deploy-forward-it
-make forward-integration-tests
-make destroy-forward-it
-```
-
-To run integration tests for historical processing:
-
-```plain
-make deploy-historical-it
-make historical-integration-tests
-make destroy-historical-it
+make deploy-it
+make integration-tests
+make destroy-it
 ```
