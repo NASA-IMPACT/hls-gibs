@@ -73,13 +73,14 @@ jobs:
         run: ""  # Nothing to do, but at least one step is required
 
   unit-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     needs: config
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "${{ needs.config.outputs.PYTHON_VERSION }}"
           cache: 'pip'
@@ -92,14 +93,15 @@ jobs:
           make unit-tests
 
   integration-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
-    environment: dev-forward
+    environment: dev
     needs: config
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "${{ needs.config.outputs.PYTHON_VERSION }}"
           cache: 'pip'
@@ -113,45 +115,44 @@ jobs:
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME_ARN }}
           role-session-name: ${{ github.actor }}
-      - name: Convert secrets to environment variables
-        env:
-          SECRETS_JSON: ${{ toJson(secrets) }}
+      - name: Convert secrets and vars to environment variables
+        shell: python
         run: |
-          while read -rd $'' line; do
-            echo "$line" >> $GITHUB_ENV
-          done < <(
-            jq -r <<<"$SECRETS_JSON" 'to_entries|map("\(.key)=\(.value)\u0000")[]'
-          )
-      - name: Convert vars to environment variables
-        env:
-          VARS_JSON: ${{ toJson(vars) }}
+          import os
+
+          secrets_and_vars = {
+              **${{ toJson(secrets) }},
+              **${{ toJson(vars) }},
+          }
+
+          with open(os.environ["GITHUB_ENV"], "a") as env_file:
+              for name, value in secrets_and_vars.items():
+                  # If the value contains a newline, use the delimiter syntax
+                  # https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#multiline-strings
+                  if "\n" in value:
+                      print(f"{name}<<EOF\n{value}\nEOF", file=env_file)
+                  else:
+                      # Standard format for single lines
+                      print(f"{name}={value}", file=env_file)
+      - name: Deploy notification integration test stack
         run: |
-          while read -rd $'' line; do
-            echo "$line" >> $GITHUB_ENV
-          done < <(
-            jq -r <<<"$VARS_JSON" 'to_entries|map("\(.key)=\(.value)\u0000")[]'
-          )
-      # - name: Deploy forward notification integration test stack
-      #   run: |
-      #     make deploy-forward-it
-      # - name: Run forward notification integration tests
-      #   run: |
-      #     make forward-integration-tests
-      # - name: Destroy forward notification integration test stack
-      #   if: always()
-      #   run: |
-      #     make destroy-forward-it
+          make deploy-it
+      - name: Run notification integration tests
+        run: |
+          make integration-tests
+      - name: Destroy notification integration test stack
+        if: always()
+        run: |
+          make destroy-it
 
   deploy-dev:
     # Deploy to Dev only on push (including merged PR) to `develop` branch
     if: github.event_name == 'push' && github.event.ref == 'refs/heads/develop'
     needs:
       - config
-      - unit-tests
-      - integration-tests
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: dev-forward
+      environment: dev
       PYTHON_VERSION: "${{ needs.config.outputs.PYTHON_VERSION }}"
       TOX_MIN_VERSION: "${{ needs.config.outputs.TOX_MIN_VERSION }}"
     secrets: inherit
@@ -161,11 +162,9 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
     needs:
       - config
-      - unit-tests
-      - integration-tests
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: prod-forward
+      environment: prod
       PYTHON_VERSION: "${{ needs.config.outputs.PYTHON_VERSION }}"
       TOX_MIN_VERSION: "${{ needs.config.outputs.TOX_MIN_VERSION }}"
     secrets: inherit

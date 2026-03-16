@@ -32,6 +32,9 @@ For _GitHub workflows_, you must define the following environment variables in
 each GitHub environment for this repository:
 
 ```plain
+AWS_DEFAULT_REGION=us-west-2
+AWS_ROLE_TO_ASSUME_ARN=<github-oidc-role-arn>
+
 # A unique prefix for a deployment to avoid resource name conflicts between
 # deployments in the same AWS account.  Should correspond to GitHub environment
 # name.
